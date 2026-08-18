@@ -66,10 +66,9 @@ func (s *Scheduler) registerDaily() error {
 	}
 	at := gocron.NewAtTime(uint(h), uint(m), 0)
 	times := gocron.NewAtTimes(at)
-	_, err = s.cron.NewJob(gocron.DailyJob(1, times), gocron.NewTask(func() {
-		day := s.svc.LocalDate(time.Now())
-		s.broadcast(context.Background(), "evening", service.EveningPromptFor(day))
-	}))
+		_, err = s.cron.NewJob(gocron.DailyJob(1, times), gocron.NewTask(func() {
+			s.broadcastEvening(context.Background())
+		}))
 	return err
 }
 
@@ -79,6 +78,20 @@ func (s *Scheduler) broadcast(ctx context.Context, kind string, reply *service.R
 		s.log.Error("list active users", slog.Any("err", err))
 		return
 	}
+	s.sendToUsers(ctx, kind, ids, reply)
+}
+
+func (s *Scheduler) broadcastEvening(ctx context.Context) {
+	day := s.svc.LocalDate(time.Now())
+	ids, err := s.svc.ListEveningReviewRecipients(ctx, day)
+	if err != nil {
+		s.log.Error("list evening review recipients", slog.Any("err", err))
+		return
+	}
+	s.sendToUsers(ctx, "evening", ids, service.EveningPromptFor(day))
+}
+
+func (s *Scheduler) sendToUsers(ctx context.Context, kind string, ids []int64, reply *service.Reply) {
 	var ok, fail int
 	for _, id := range ids {
 		if err := s.send.SendTo(id, reply); err != nil {

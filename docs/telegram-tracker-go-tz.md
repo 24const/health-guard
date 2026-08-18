@@ -25,14 +25,14 @@
 * Конфигурация: переменные окружения (`.env` через `env_file` в Compose)
 * Логирование: стандартный `log/slog` в stdout/stderr
 * Часовые пояса: `import _ "time/tzdata"` в `main` (чтобы `TIMEZONE` работал в контейнере)
-* Деплой: Docker (multi-stage) + Docker Compose (сервисы `postgres`, `bot`, `backup`)
+* Деплой: Docker (multi-stage) + Docker Compose (сервисы `postgres`, `bot`)
 
 Почему так:
 
 * `pgx` даёт `CGO_ENABLED=0` и статичный бинарь. Образ бота собирается без gcc.
 * follow-up хранится в БД, а не только в памяти планировщика, поэтому переживает рестарт контейнера.
 * golang-migrate версионирует схему отдельно от кода: каждый шаг — пара `.up.sql` / `.down.sql`, таблица версий `schema_migrations`. Автомиграции ORM нет.
-* Docker Compose поднимает бота и Postgres вместе: `docker compose up -d` на VPS, данные Postgres в named volume, бэкапы в bind-mount.
+* Docker Compose поднимает бота и Postgres вместе: `docker compose up -d` на VPS, данные Postgres в bind-mount `./data/postgres`.
 
 Альтернатива, если понадобится: библиотека `github.com/go-telegram/bot` (без зависимостей). GORM AutoMigrate и ручной `CREATE TABLE` в коде не использовать.
 
@@ -59,8 +59,6 @@ FOLLOWUP_DELAY_MIN=20
 SNOOZE_DELAY_MIN=15
 JOB_POLL_INTERVAL_SEC=20
 JOB_GRACE_MIN=120
-BACKUP_DIR=/backups
-BACKUP_KEEP=14
 MIGRATION_DIRECTION=up
 MIGRATION_VERSION=0
 DB_MAX_OPEN_CONNS=10
@@ -79,7 +77,7 @@ DB_CONN_MAX_IDLE_TIME=1h
 
 `MIGRATION_DIRECTION` по умолчанию `up`. Полный `down` не поддерживается: откат только через `step_back` или `to_version` вместе с `MIGRATION_VERSION`. `DB_*` задают пул `pgxpool`.
 
-Конфиг читается из `.env` и подаётся в сервисы через `env_file`. Данные Postgres живут в named volume `postgres_data`. Дампы `pg_dump` пишутся в bind-mount `./data/backups` на хосте.
+Конфиг читается из `.env` и подаётся в сервисы через `env_file`. Данные Postgres живут в bind-mount `./data/postgres` на хосте и переживают пересоздание контейнеров.
 
 ## 4. Основной пользовательский сценарий
 
@@ -213,17 +211,21 @@ Follow-up связывается с исходным check-in через `checki
 
 Пользователь может начать check-in сам в любой момент.
 
-Команда `/checkin`, а также постоянная reply-кнопка:
+Постоянная reply-клавиатура на главном экране повторяет все команды:
 
 ```text
-📝 Check-in
+📝 Check-in     📅 Сегодня
+📚 История      ✏️ Правка
+📊 Статистика   ❌ Отмена
 ```
+
+Клавиатура показывается после `/start` и остаётся в чате. Команды с `/` работают так же, как кнопки.
 
 Ручной check-in использует ту же логику и формат хранения, что и автоматический, отличается только `source = manual`.
 
 ## 11. Вечерний итог
 
-Один раз вечером (`EVENING_REVIEW_TIME`) бот предлагает короткий итог дня.
+Один раз вечером (`EVENING_REVIEW_TIME`) бот предлагает короткий итог дня **только тем**, у кого за текущий `local_date` ещё нет записи в `daily_reviews`. Если итог уже заполнен (вечером или задним числом через историю), приглашение не отправляется.
 
 * Максимальная тяга к курению, 0–10
 * Максимальная тяга к алкоголю, 0–10
@@ -577,7 +579,7 @@ telegram-tracker/
 │       ├── 000001_init.up.sql
 │       └── 000001_init.down.sql
 ├── data/
-│   └── backups/         # pg_dump, bind-mount, не в образе
+│   └── postgres/        # bind-mount PGDATA, не в образе
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
@@ -602,7 +604,7 @@ telegram-tracker/
 
 Стандартный `log/slog`, текстовый или JSON handler.
 
-Логировать: запуск и остановку, ошибки Telegram API, начало и завершение check-in, срабатывание job, итог рассылки (сколько получателей, сколько ошибок), ошибки БД, применение миграций golang-migrate (версия схемы), выполнение бэкапа.
+Логировать: запуск и остановку, ошибки Telegram API, начало и завершение check-in, срабатывание job, итог рассылки (сколько получателей, сколько ошибок), ошибки БД, применение миграций golang-migrate (версия схемы).
 
 Записи, относящиеся к пользователю, снабжать полем `user_id`.
 
@@ -634,7 +636,7 @@ telegram-tracker/
 
 ## 22. Развёртывание на VPS
 
-Единственный способ — Docker Compose. Сервисы: `postgres`, `bot`, `backup`.
+Единственный способ — Docker Compose. Сервисы: `postgres`, `bot`.
 
 ### 22.1. Образ бота
 
@@ -693,7 +695,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -710,41 +712,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-  backup:
-    image: postgres:16-alpine
-    container_name: telegram-tracker-backup
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./data/backups:/backups
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      while true; do
-        ts=$$(date -u +%Y-%m-%d);
-        PGPASSWORD="$$POSTGRES_PASSWORD" pg_dump
-          -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
-          -Fc -f "/backups/bot-$$ts.dump";
-        ls -1t /backups/bot-*.dump 2>/dev/null | tail -n +$$((BACKUP_KEEP+1)) | xargs -r rm --;
-        sleep 86400;
-      done
-
-volumes:
-  postgres_data:
 ```
 
 На хосте заранее:
 
 ```bash
-mkdir -p data/backups
+mkdir -p data/postgres
 cp .env.example .env
 # заполнить TELEGRAM_BOT_TOKEN, POSTGRES_PASSWORD и DATABASE_URL
 ```
 
-Named volume `postgres_data` обязателен. Без него кластер пропадает при пересоздании контейнера. `docker compose down` volume не трогает, пока нет `-v`.
+Bind-mount `./data/postgres` обязателен: это каталог данных Postgres (`PGDATA`) на хосте. Пересоздание контейнера данные не трогает. `docker compose down -v` для bind-mount тоже не удаляет папку на диске.
 
 Бот стартует только после `pg_isready`. Секреты только через `.env` / `env_file`, не через `Dockerfile` и не через захардкоженный `environment:`.
 
@@ -767,15 +745,11 @@ docker compose up -d --build bot
 docker compose stop
 ```
 
-### 22.4. Резервное копирование
+### 22.4. Данные на хосте
 
-Данные накопительные и личные, терять их нельзя. Раз в сутки сервис `backup` делает `pg_dump -Fc` в `BACKUP_DIR` (`./data/backups` на хосте). Хранить последние `BACKUP_KEEP` копий, более старые удалять.
+Данные накопительные и личные, терять их нельзя. Кластер Postgres хранит файлы в `./data/postgres` на хосте (внутри контейнера это `/var/lib/postgresql/data`). Отдельный контейнер с `pg_dump` не нужен.
 
-Восстановление:
-
-```bash
-docker compose exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists < data/backups/bot-2026-08-18.dump
-```
+Копию каталога можно делать при остановленном Postgres (`docker compose stop postgres`), иначе есть риск неконсистентного снимка.
 
 ## 23. Запуск
 
@@ -800,7 +774,7 @@ MVP готов, если:
 * бот и Postgres поднимаются одной командой `docker compose up -d`;
 * есть `Dockerfile`, `docker-compose.yml` и `.dockerignore`;
 * схема создаётся и обновляется golang-migrate при старте бота; есть парные `.up.sql` / `.down.sql`;
-* данные Postgres живут в named volume, дампы — в `./data/backups`;
+* данные Postgres живут в `./data/postgres` на хосте;
 * порт 5432 наружу не опубликован;
 * `TIMEZONE` резолвится внутри контейнера, расписание check-in идёт по локальному времени;
 * процесс корректно завершается по SIGTERM;
@@ -816,7 +790,6 @@ MVP готов, если:
 * итог дня можно дозаполнить задним числом (upsert по `user_id, local_date`);
 * значения существующего check-in можно отредактировать без создания дублей;
 * время хранится в UTC (`TIMESTAMPTZ`), группировка по дням через `local_date`;
-* работает ежесуточный `pg_dump`;
 * данные переживают рестарт контейнеров;
 * токены, пароль Postgres и `DATABASE_URL` вынесены в окружение, не попадают в образ;
 * есть README с инструкцией запуска через Docker Compose.

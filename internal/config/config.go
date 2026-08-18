@@ -29,9 +29,6 @@ type Config struct {
 	JobPollInterval   time.Duration
 	JobGrace          time.Duration
 
-	BackupDir  string
-	BackupKeep int
-
 	MigrationDirection MigrationDirection
 	MigrationVersion   uint
 
@@ -86,8 +83,6 @@ func Load() (*Config, error) {
 		SnoozeDelay:        minutesOr("SNOOZE_DELAY_MIN", 15),
 		JobPollInterval:    secondsOr("JOB_POLL_INTERVAL_SEC", 20),
 		JobGrace:           minutesOr("JOB_GRACE_MIN", 120),
-		BackupDir:          envOr("BACKUP_DIR", "/backups"),
-		BackupKeep:         intOr("BACKUP_KEEP", 14),
 		MigrationDirection: dir,
 		MigrationVersion:   uint(intOr("MIGRATION_VERSION", 0)),
 		DBMaxOpenConns:     int32(intOr("DB_MAX_OPEN_CONNS", 10)),

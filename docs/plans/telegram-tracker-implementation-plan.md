@@ -12,7 +12,7 @@
 - слои `cmd/bot/main.go` + `internal/{config,model,repository,service,...}`, интерфейс `Repo` и структура `repo{pool, log}`;
 - пул БД настраивается (max open/idle conns, conn max lifetime/idle time).
 
-Не берём: GORM, viper с `config.yaml`, zap, gin, NSQ/NATS/Redis. Остаются `pgx`, `.env`, `log/slog`, `telebot`, `gocron`. Docker Compose остаётся как в ТЗ: `postgres` + `bot` + `backup`.
+Не берём: GORM, viper с `config.yaml`, zap, gin, NSQ/NATS/Redis. Остаются `pgx`, `.env`, `log/slog`, `telebot`, `gocron`. Docker Compose: `postgres` + `bot`, данные в `./data/postgres`.
 
 ## Часть 1. Правки в docs/telegram-tracker-go-tz.md
 
@@ -63,4 +63,4 @@ flowchart LR
 5. **Расписание**: `internal/scheduler` — gocron по `CHECKIN_TIMES` с рассылкой активным пользователям, поллер `jobs` для follow-up и snooze, `JOB_GRACE_MIN`, деактивация заблокировавших бота.
 6. **История и итог дня**: `/today`, `/history`, `/edit`, экран дня, правка отдельных полей с проверкой владельца записи.
 7. **Статистика**: `/stats` за 7 дней, включая среднее снижение тяги после follow-up.
-8. **Инфраструктура**: `Dockerfile`, `docker-compose.yml` (`postgres` + `bot` + `backup`), `.dockerignore`, `.env.example`, `Makefile`, `README.md`.
+8. **Инфраструктура**: `Dockerfile`, `docker-compose.yml` (`postgres` + `bot`, bind-mount `./data/postgres`), `.dockerignore`, `.env.example`, `Makefile`, `README.md`.

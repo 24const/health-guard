@@ -18,6 +18,7 @@ type Repo interface {
 	UpsertUser(ctx context.Context, userID int64, username, firstName string) error
 	SetUserActive(ctx context.Context, userID int64, active bool) error
 	ListActiveUserIDs(ctx context.Context) ([]int64, error)
+	ListActiveUserIDsWithoutReview(ctx context.Context, localDate time.Time) ([]int64, error)
 
 	CreateCheckin(ctx context.Context, c *model.Checkin) (int64, error)
 	GetCheckin(ctx context.Context, userID, id int64) (*model.Checkin, error)
@@ -98,6 +99,31 @@ func (r *repo) ListActiveUserIDs(ctx context.Context) ([]int64, error) {
 	rows, err := r.pool.Query(ctx, `SELECT id FROM users WHERE is_active = TRUE`)
 	if err != nil {
 		return nil, fmt.Errorf("list active users: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (r *repo) ListActiveUserIDsWithoutReview(ctx context.Context, localDate time.Time) ([]int64, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT u.id
+		FROM users u
+		WHERE u.is_active = TRUE
+		  AND NOT EXISTS (
+			SELECT 1 FROM daily_reviews dr
+			WHERE dr.user_id = u.id AND dr.local_date = $1
+		  )
+	`, localDate)
+	if err != nil {
+		return nil, fmt.Errorf("list users without review: %w", err)
 	}
 	defer rows.Close()
 	var ids []int64

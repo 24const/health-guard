@@ -53,13 +53,17 @@ func (s *Service) ListActiveUserIDs(ctx context.Context) ([]int64, error) {
 	return s.repo.ListActiveUserIDs(ctx)
 }
 
+func (s *Service) ListEveningReviewRecipients(ctx context.Context, localDate time.Time) ([]int64, error) {
+	return s.repo.ListActiveUserIDsWithoutReview(ctx, localDate)
+}
+
 func (s *Service) LocalDate(t time.Time) time.Time {
 	lt := t.In(s.loc)
 	return time.Date(lt.Year(), lt.Month(), lt.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 func (s *Service) StartHelp() *Reply {
-	return &Reply{Text: "Привет. Это бот для коротких check-in: настроение, стресс, тяга.\n\nКоманды:\n/checkin — прямо сейчас\n/today — сегодня\n/history — прошлые дни\n/stats — 7 дней\n/cancel — остановить текущий опрос"}
+	return &Reply{Text: "Привет. Это бот для коротких check-in: настроение, стресс, тяга.\n\nКнопки внизу повторяют команды:\n📝 Check-in — прямо сейчас\n📅 Сегодня — сводка дня\n📚 История — прошлые дни\n✏️ Правка — изменить записи\n📊 Статистика — 7 дней\n❌ Отмена — остановить текущий опрос"}
 }
 
 func (s *Service) Cancel(userID int64) *Reply {

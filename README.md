@@ -7,14 +7,14 @@
 ```bash
 cp .env.example .env
 # заполнить TELEGRAM_BOT_TOKEN, POSTGRES_PASSWORD и DATABASE_URL
-mkdir -p data/backups
+mkdir -p data/postgres
 docker compose up -d --build
 docker compose logs -f bot
 ```
 
 Миграции схемы применяются при старте бота (golang-migrate, файлы в `migrations/postgres/`).
 
-Остановка: `docker compose stop`. Данные Postgres живут в named volume `postgres_data`, дампы — в `./data/backups`.
+Остановка: `docker compose stop`. Данные Postgres лежат в `./data/postgres` на хосте и переживают пересоздание контейнеров.
 
 ## Команды бота
 

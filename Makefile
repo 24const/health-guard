@@ -4,7 +4,7 @@ run:
 	go run ./cmd/bot
 
 up:
-	mkdir -p data/backups
+	mkdir -p data/postgres
 	docker compose up -d --build
 
 down:
