@@ -1,0 +1,48 @@
+---
+description: What you may claim about a Go change and the minimum evidence for it
+alwaysApply: true
+---
+
+# Claims and verification (Go)
+
+Default remains “no tests unless asked” (`token-discipline.mdc`). When the user asks to test/verify, or a change is in scope for verification (P0 money, migrations, public contracts), use this matrix — pick by change type, do not run a fixed sequence.
+
+## Reality (fill per repo; do not invent frameworks)
+
+| Check | Typical command / evidence |
+|-------|----------------------------|
+| Compiles | `go build ./...` or package-scoped build |
+| Static | `go vet ./...`, `golangci-lint run` |
+| Unit / package | `go test ./...` or narrower package tests |
+| Race | `go test -race` on concurrent packages |
+| Migration | Applied to disposable/scratch DB; up/down/up when policy requires |
+| Contract | Generated stubs or schema regenerate-and-diff clean; broker/API fixture green |
+| Staging / real provider | Checklist item on staging — never claim from local mocks alone |
+
+If a row does not exist in the target repo, say so explicitly. Do not add Vitest/Jest-style FE tooling; do not invent a test framework the repo lacks.
+
+## Pick by change type
+
+| Change type | Do |
+|-------------|-----|
+| Pure logic in a package with tests | Extend `*_test.go`, run package `go test` |
+| Handler / DTO / public API shape | Contract or handler test; regenerate schema if that is the source of truth |
+| Repository / SQL | Integration or repository test against scratch DB when available |
+| Migration | Validate against scratch DB; follow `migrations.mdc` + migration-review skill |
+| Money / ledger / wallet | Invariant or integration test; never claim “safe” from compile alone |
+| Messaging consumer / publisher | Idempotency / ack semantics covered; fixture or broker test when available |
+| Log string / comment / typo / already-threaded DTO field | Nothing — code fix only, per `fast-path.mdc` |
+| Real payment / KYC / affiliate / provider | Staging checklist — not local-only |
+
+## Honest claims
+
+| Allowed claim | Minimum evidence |
+|---------------|------------------|
+| “Compiles / types clean” | `go build` / `go vet` for touched packages |
+| “Unit-tested” | `go test` green for the packages that contain the logic |
+| “Race-checked” | `go test -race` green on the concurrent surface |
+| “Migration applied (scratch)” | Migration job/tool against disposable DB |
+| “Contract holds” | Regenerate-and-diff clean and/or contract test green |
+| “Ready for go-live” / “works with real X” | Staging checklist item ticked |
+
+Never claim a layer you did not run. If a check could not run (no DB, no broker, missing tool), say so explicitly.

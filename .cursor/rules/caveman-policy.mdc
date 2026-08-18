@@ -1,0 +1,36 @@
+---
+description: Control when to activate caveman skill
+alwaysApply: true
+---
+
+# Caveman Skill Usage
+
+Default: OFF.
+
+Caveman shrinks output tokens only and adds about 1 to 1.5k input tokens
+per turn. So the win is on prose-heavy replies, not on token count alone,
+and on already terse or agent-heavy work it can go net negative.
+
+## Enable Caveman when:
+- User explicitly asks: "caveman", "brief", "short", "less talk"
+- Quick coding questions
+- Small bug fixes
+- Simple refactoring
+- Boilerplate generation
+- Short code reviews
+- Private notes or commit messages
+
+## Disable Caveman when:
+- Architecture or system design
+- Complex debugging or investigations
+- Production risk analysis
+- Public documentation or communication
+- Tutorials or learning explanations
+- Multi-step instructions where details matter
+- Long unattended agent passes over the repo
+  (savings near zero, input overhead per turn dominates)
+
+## Auto-off (even mid-session):
+- Security-sensitive or irreversible operations, keep output fully explicit
+
+When unsure, keep Caveman OFF.

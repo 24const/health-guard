@@ -1,0 +1,24 @@
+---
+description: Safe SQL migrations — expand/contract, no destructive same-release change
+globs: migrations/**,sql/**,**/migrations/**
+alwaysApply: false
+---
+
+# SQL migrations (production-safe)
+
+For reviews use `.cursor/skills/migration-review/SKILL.md`.
+
+## Must
+
+- Forward-only numbering; no gaps unless the project’s migration tool already forbids them.
+- Treat migrations as production-safe changes. Prefer explicit column lists and deterministic queries.
+- Expand/contract across **two** deploys for renames/drops: add → dual-write/read → remove. No destructive column drop/rename in the same release as the code that stops using the old shape.
+- Backfills are **jobs**, not unbounded `UPDATE` inside a migration. Bound batches; index first when needed.
+- Large indexes: `CREATE INDEX CONCURRENTLY` (or the DB equivalent) and therefore no wrapping transaction when the tool forbids it.
+- Every migration has a tested `down` **or** is explicitly declared irreversible with a mitigation note.
+- Validate against a disposable/scratch DB (up, or up/down/up per policy) before claiming safety.
+
+## Must not
+
+- Risky destructive operations unless the user explicitly requested them and the policy checklist is filled.
+- Invent a second migration framework alongside the repo’s canonical one.

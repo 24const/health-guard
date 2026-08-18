@@ -1,0 +1,35 @@
+---
+description: What a good Go test looks like — assert observable behavior and contracts, not the current implementation. Use when writing or changing *_test.go. Reviewing tests in a PR is the code-review skill.
+globs:
+  - "**/*_test.go"
+alwaysApply: false
+---
+
+# Tests: behavior, not implementation
+
+A test reads like a spec: given this input, the system must produce this observable result. If the test bodies alone do not tell what the feature is supposed to do, the tests are bad.
+
+## Write it this way
+
+- Assert observable output: the return value, the returned error, the row that changed. `require.Equal(t, want, got)`.
+- Do not assert internal state. When the test lives in the same package as the code, unexported fields are reachable — reachable is not assertable. Use an external `package foo_test` when you want the black box enforced by the compiler.
+- Mock only real external boundaries: network, DB, time, filesystem, third-party services. Everything inside the unit under test runs for real. Never assert that a specific internal method was called, or the order of internal calls.
+- The name states the condition and the expected result: `TestReturnsErrorWhenBalanceInsufficient`, not `TestWithdraw`.
+- Cover the edges, not just the happy path: empty input, invalid input, limits exceeded, a dependency failing, concurrent access.
+- Before adding a test, ask which real bug would turn it red. A mock returning X plus an assertion that X came back verifies nothing.
+- A test must survive a behavior-preserving refactor. If renaming an unexported method or reordering internal steps would break it, it is testing the implementation.
+
+## Go specifics
+
+- Multiple scenarios go in table-driven subtests (see the repo `AGENTS.md`), not copy-pasted test functions.
+- `t.Parallel()` requires no state shared across subtests.
+- `time.Sleep` as synchronization is a flake: use a channel, `sync.WaitGroup`, or `require.Eventually`.
+- Concurrent surfaces are only proven under `go test -race` (`.cursor/rules/claims-and-verification.mdc`).
+- Tear down with `t.Cleanup`, not a defer chain that a `t.Fatal` skips.
+- A package-level `TestMain` sets process-global state for every test in the package. New global setup there, or a test that mutates it, makes the package order-dependent.
+
+## Money paths
+
+Balance, payment, currency and commission code needs its invariants asserted as observable outcomes: balance never goes negative, a repeated request debits once, rounding is correct at the stated precision, debit and credit are atomic with no half-applied state. Never assert this as "the handler was called with these arguments" — such a test stays green while money is lost.
+
+Which tests a change of this kind owes, and what may be claimed from them, is in `.cursor/rules/claims-and-verification.mdc`.

@@ -1,0 +1,10 @@
+---
+description: Commits, PRs, and GitHub review comments are English only
+alwaysApply: true
+---
+
+# Git / PR language
+
+Commits, PR titles, PR bodies, and GitHub review comments: **English only**.
+
+Chat with the user may stay in the user's language. Do not put Russian (or any non-English) in git history or GitHub review text.

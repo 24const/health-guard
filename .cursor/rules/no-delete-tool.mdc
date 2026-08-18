@@ -1,0 +1,15 @@
+---
+description: Delete tool hangs — always remove files via Shell instead
+alwaysApply: true
+---
+
+# Never use the Delete tool
+
+The Delete tool hangs in this environment. Never call it.
+
+To remove files:
+
+- Untracked / local files: Shell with `Remove-Item -Force -- path`
+- Tracked git files: Shell with `git rm -- path`
+
+Do not retry Delete after a hang or failure. Use Shell from the first attempt.

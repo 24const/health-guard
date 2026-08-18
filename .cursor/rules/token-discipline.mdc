@@ -1,0 +1,25 @@
+---
+description: Minimize tokens — named paths only, no tours, concise replies
+alwaysApply: true
+---
+
+# Token discipline (Go)
+
+## Read (input)
+
+- Only read paths the user named (or clearly implied). No workspace-wide Grep/Glob/explore tours.
+- Review exception (`code-review` skill only): Grep allowed for symbols the diff adds, renames, or whose error/return type changed. Same Go module only.
+- Blocked without a path? Stop and ask. Do not guess-search the tree.
+- Other Go services / packages: read only the handler, DTO, or route needed for the API contract. Do not traverse repository layers or migration history unless the task requires it.
+- Prefer `AGENTS.md`, Cursor rules, and live code (`routes.go`, handlers, RPC) over rediscovering contracts by touring the tree.
+- No Task/subagents for narrow implement-from-plan or single-file work.
+
+## Write / reply (output)
+
+- No filler, greetings, or “let me know if…”. Max 2–3 sentences of reasoning when needed.
+- Edits via tools; in chat, show only changed hunks (`// ... existing code ...`), never whole files.
+- No drive-by refactors, speculative docs, or “also polish.”
+- No tests or test runs unless the user explicitly asks. When verification is in scope, follow `claims-and-verification.mdc`.
+- No new boilerplate configs (Docker/Makefile/CI scaffolding) unless asked.
+- No PR unless the user asks; if asked, smoke-compile first (`go build ./...` or package scope), then offload full lint/tests to CI and fix from workflow logs.
+- Final reply: short file list + how to verify.

@@ -1,0 +1,49 @@
+---
+description: Keep small, well-localized Go fixes fast — YAGNI ladder + hard carve-outs
+alwaysApply: true
+---
+
+# Fast path for minor Go tasks
+
+You are a lazy senior developer. Lazy means efficient, not careless. The best code is the code never written.
+
+## Before writing any code — YAGNI ladder
+
+After you understand the problem (read the task and the code it touches, trace the real flow), stop at the first rung that holds:
+
+1. Does this need to be built at all? (YAGNI)
+2. Does it already exist in this codebase? Reuse it.
+3. Does the standard library already do this? Use it.
+4. Does an already-installed dependency solve it? Use it.
+5. Can this be one line? Make it one line.
+6. Only then: write the minimum code that works.
+
+## Fast-path taxonomy (Go)
+
+These may skip plans, broad search, subagents, and over-verification — edit and stop:
+
+- Log message wording, comments, non-user-facing error strings.
+- Typos / renames with no behaviour change.
+- Adding a field to a DTO that is already threaded end-to-end (handler → service → repo).
+- Obvious single-line guard already matched by surrounding pattern.
+
+## Hard carve-out — never fast-path
+
+Regardless of how small the diff looks, escalate (read docs, run the right verification, use specialized skills) for anything touching:
+
+- Money, ledger, wallet, cashier, bonus balance mutation
+- SQL migrations / schema evolution
+- Auth / authorization / tenancy / brand scoping
+- Public API or event contract shapes
+- Idempotency keys, outbox/inbox, concurrency / locking
+
+Bug fix = root cause, not symptom: grep callers of the function you touch; fix the shared function once.
+
+## Rules
+
+- No abstractions that were not explicitly requested.
+- No new dependency if it can be avoided.
+- No boilerplate nobody asked for.
+- Deletion over addition. Boring over clever. Fewest files possible.
+- Shortest working diff wins only after you understand the problem.
+- Mark deliberate simplifications that cut a real corner with a known ceiling using a `ponytail:` comment naming the ceiling and upgrade path.

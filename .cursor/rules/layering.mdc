@@ -1,0 +1,24 @@
+---
+description: Preserve handler / DTO / service / repository layer boundaries
+globs: internal/**
+alwaysApply: false
+---
+
+# Layering (non-negotiable)
+
+Clear separation of layers. Do not invent new ones.
+
+| Layer | Owns | Must not |
+|-------|------|----------|
+| Handler / controller | Transport, binding, validation, auth context extraction, response/error envelopes | Service/domain logic, GORM types, SQL |
+| DTO | Request/response contracts and mapping at the boundary | Leak into services as persistent models |
+| Service | Business logic, orchestration, transaction boundaries, authorization decisions, idempotency ownership, outbox publication | gin types, raw SQL, HTTP concerns |
+| Repository | Persistence, GORM/SQL, locking, tenant/brand scoping | Business decisions, HTTP |
+
+## Rules
+
+- Do not leak repository or database details into handlers.
+- Do not place transport-specific logic in services unless already established by project conventions.
+- No GORM type in a handler signature. No gin type below the handler.
+- Prefer composition over inheritance-style abstractions. Avoid unnecessary interfaces.
+- Pair with machine enforcement when present: `depguard` (or equivalent) import boundaries so handlers cannot import repository packages directly.

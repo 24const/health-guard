@@ -1,0 +1,11 @@
+---
+description: Always read and apply the repo-local go-backend skill first
+alwaysApply: true
+---
+
+# Go Backend Skill Requirement
+
+- For every task in this project, first read and apply `.cursor/skills/go-backend/SKILL.md`.
+- Follow that skill before analysis, implementation, or any code changes.
+- For migration-heavy work, also load `.cursor/skills/migration-review/SKILL.md` when the task clearly maps to it.
+- Reviewing a PR, branch, diff or already-written code → load `.cursor/skills/code-review/SKILL.md`. Do not load it while implementing or fixing. Caveman-review does not replace this skill: it only compresses hunt lines when the user asks for caveman/brief. Caveman-review does not replace this skill: it only compresses hunt lines when the user asks for caveman/brief.

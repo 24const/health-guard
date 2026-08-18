@@ -1,0 +1,19 @@
+---
+description: Idempotent consumers, documented keys, outbox — NATS/Kafka semantics
+globs: internal/rpc/**,internal/service/**,**/brand_games*
+alwaysApply: false
+---
+
+# Messaging (NATS / Kafka)
+
+Subjects/topics: only those already registered in `internal/rpc` and Kafka emit sites. Do not invent new ones without an explicit ask.
+
+## Rules
+
+- Delivery is at-least-once unless proven otherwise. **Business effects must be idempotent** (dedupe key, inbox table, or ledger idempotency key).
+- Record the partition key (Kafka) or queue group / subject (NATS) for every new topic/subscription next to the registration/emit site.
+- No publish inside a DB transaction without an **outbox** (or the repo’s established equivalent).
+- Explicit retry / DLQ policy per consumer. Poison messages must not block the partition forever without a documented path.
+- Carry correlation / causation / trace IDs in the envelope (`observability-pii.mdc`).
+- Schema versioning: additive fields preferred; breaking payload changes need dual-read or a new subject/topic version.
+- Distinguish “message delivered” from “side effect applied exactly once.”

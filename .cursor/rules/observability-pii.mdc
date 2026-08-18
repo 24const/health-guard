@@ -1,0 +1,15 @@
+---
+description: Never log PII or secrets; zap structured fields only; wrap errors with context
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Observability and PII
+
+- **zap only** for application logs. Structured fields. No `fmt.Print*` / `log.Print*` outside `main` (or approved bootstrap).
+- Wrap errors with `%w` and operation context at each layer boundary. Logging an error and continuing is the violation; logging **and** returning it is fine.
+- Propagate `context.Context`. Never `context.Background()` below `main` / process entry.
+- Trace / span / request / correlation IDs must survive NATS/Kafka boundaries (carry them in the message envelope).
+- **Deny-list** — never log: `password`, `token`, `refreshToken`, `email`, `phone`, `pan`, `address`, `apiKey`, full auth/cashier request bodies, secrets from env.
+- Do not invent a parallel observability stack. Reuse existing zap / tracing patterns.
+- Machine twin when present: `errorlint`, `contextcheck`, `noctx`, `forbidigo`.

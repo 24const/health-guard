@@ -1,0 +1,18 @@
+---
+description: Preserve REST and event contract compatibility at service boundaries
+globs: internal/handler/**,internal/dto/**,internal/**/rpc/**
+alwaysApply: false
+---
+
+# API / event contracts
+
+Source of truth: live `internal/handler/routes.go` + handler/DTO types (`swagger/` may lag).
+
+## Rules
+
+- **One direction only:** spec generates Go types, or Go types generate the spec — never both hand-maintained. State which direction the repo uses; CI should regenerate and fail on a non-empty diff.
+- DTO validation at gin (or transport) boundaries. Stable typed errors / error codes. No leaking internal DB errors to clients.
+- Backwards compatibility by default: additive changes preferred; breaking changes require an explicit versioning / dual-run plan.
+- When a public request or response changes, update contract tests or regenerate stubs in the same change.
+- Do **not** invent routes or payload fields. Prefer `routes.go` and existing DTOs over guessing.
+- Event payloads follow the same ownership: shapes already used at emit/consume sites, versioned, consumers tolerant of additive fields.
